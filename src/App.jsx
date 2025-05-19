@@ -55,7 +55,7 @@ function generateMockReservations() {
 function App() {
   const [view, setView] = useState('daily'); // 'daily' or 'weekly'
   const [selectedDate, setSelectedDate] = useState(today);
-  const [reservations] = useState(generateMockReservations());
+  const [reservations, setReservations] = useState(generateMockReservations());
 
   const handlePrev = () => {
     setSelectedDate(prev => {
@@ -89,7 +89,7 @@ function App() {
       </div>
       <div className="schedule">
         {view === 'daily' ? (
-          <DailySchedule date={selectedDate} reservations={reservations} />
+          <DailySchedule date={selectedDate} reservations={reservations} setReservations={setReservations} />
         ) : (
           <WeeklySchedule weekDates={getWeekDates(selectedDate)} reservations={reservations} />
         )}
@@ -98,12 +98,11 @@ function App() {
   );
 }
 
-function DailySchedule({ date, reservations }) {
+function DailySchedule({ date, reservations, setReservations }) {
   const dateStr = formatDate(date);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ court: 1, start: '08:00', name: '' });
   const [filterAvailable, setFilterAvailable] = useState(false);
-  const [localReservations, setLocalReservations] = useState(reservations);
   const slotMinutes = 90;
   const startHour = 8;
   const endHour = 20;
@@ -120,10 +119,10 @@ function DailySchedule({ date, reservations }) {
     slotStart = slotEnd;
   }
 
-  // Add reservation handler (persist in local state)
+  // Add reservation handler (persist in parent state)
   const handleAdd = (e) => {
     e.preventDefault();
-    setLocalReservations(prev => {
+    setReservations(prev => {
       const updated = { ...prev };
       if (!updated[dateStr][form.court]) updated[dateStr][form.court] = [];
       updated[dateStr][form.court] = [
@@ -140,7 +139,7 @@ function DailySchedule({ date, reservations }) {
   const quickReserve = (court, start) => {
     const player = prompt('Enter player name for reservation:');
     if (!player) return;
-    setLocalReservations(prev => {
+    setReservations(prev => {
       const updated = { ...prev };
       if (!updated[dateStr][court]) updated[dateStr][court] = [];
       updated[dateStr][court] = [
@@ -153,7 +152,7 @@ function DailySchedule({ date, reservations }) {
 
   // Remove reservation (make available)
   const removeReservation = (court, start) => {
-    setLocalReservations(prev => {
+    setReservations(prev => {
       const updated = { ...prev };
       updated[dateStr][court] = updated[dateStr][court].filter(r => r.start !== start);
       return { ...updated };
@@ -209,7 +208,7 @@ function DailySchedule({ date, reservations }) {
             {slots.map((slot, sIdx) => {
               // If filtering, only show rows with at least one available slot
               const rowHasAvailable = Array.from({ length: NUM_COURTS }, (_, cIdx) => {
-                const courtRes = localReservations[dateStr] && localReservations[dateStr][cIdx + 1] ? localReservations[dateStr][cIdx + 1] : [];
+                const courtRes = reservations[dateStr] && reservations[dateStr][cIdx + 1] ? reservations[dateStr][cIdx + 1] : [];
                 return !courtRes.find(r => r.start === slot.start);
               }).some(Boolean);
               if (filterAvailable && !rowHasAvailable) return null;
@@ -218,7 +217,7 @@ function DailySchedule({ date, reservations }) {
                   <td style={{ padding: 8, fontWeight: 500 }}>{slot.start} - {slot.end}</td>
                   {Array.from({ length: NUM_COURTS }, (_, cIdx) => {
                     const court = cIdx + 1;
-                    const courtRes = localReservations[dateStr] && localReservations[dateStr][court] ? localReservations[dateStr][court] : [];
+                    const courtRes = reservations[dateStr] && reservations[dateStr][court] ? reservations[dateStr][court] : [];
                     const res = courtRes.find(r => r.start === slot.start);
                     if (res) {
                       return (
