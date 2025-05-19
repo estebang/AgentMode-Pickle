@@ -102,6 +102,8 @@ function DailySchedule({ date, reservations }) {
   const dateStr = formatDate(date);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ court: 1, start: '08:00', name: '' });
+  const [filterAvailable, setFilterAvailable] = useState(false);
+  const [localReservations, setLocalReservations] = useState(reservations);
   const slotMinutes = 90;
   const startHour = 8;
   const endHour = 20;
@@ -118,20 +120,56 @@ function DailySchedule({ date, reservations }) {
     slotStart = slotEnd;
   }
 
-  // Add reservation handler (mock, does not persist)
+  // Add reservation handler (persist in local state)
   const handleAdd = (e) => {
     e.preventDefault();
-    alert(`Reservation added!\nCourt: ${form.court}\nTime: ${form.start}\nPlayer: ${form.name}`);
+    setLocalReservations(prev => {
+      const updated = { ...prev };
+      if (!updated[dateStr][form.court]) updated[dateStr][form.court] = [];
+      updated[dateStr][form.court] = [
+        ...updated[dateStr][form.court],
+        { start: form.start, end: slots.find(s => s.start === form.start).end, name: form.name }
+      ];
+      return { ...updated };
+    });
     setShowForm(false);
     setForm({ court: 1, start: '08:00', name: '' });
+  };
+
+  // Make reservation directly from available slot
+  const quickReserve = (court, start) => {
+    const player = prompt('Enter player name for reservation:');
+    if (!player) return;
+    setLocalReservations(prev => {
+      const updated = { ...prev };
+      if (!updated[dateStr][court]) updated[dateStr][court] = [];
+      updated[dateStr][court] = [
+        ...updated[dateStr][court],
+        { start, end: slots.find(s => s.start === start).end, name: player }
+      ];
+      return { ...updated };
+    });
+  };
+
+  // Remove reservation (make available)
+  const removeReservation = (court, start) => {
+    setLocalReservations(prev => {
+      const updated = { ...prev };
+      updated[dateStr][court] = updated[dateStr][court].filter(r => r.start !== start);
+      return { ...updated };
+    });
   };
 
   return (
     <div>
       <h2>Daily View: {date.toDateString()}</h2>
-      <button onClick={() => setShowForm(f => !f)} style={{ marginBottom: 12 }}>
-        {showForm ? 'Cancel' : 'Add Reservation'}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+        <button onClick={() => setShowForm(f => !f)}>{showForm ? 'Cancel' : 'Add Reservation'}</button>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input type="checkbox" checked={filterAvailable} onChange={e => setFilterAvailable(e.target.checked)} />
+          Show Only Available Times
+        </label>
+      </div>
       {showForm && (
         <form onSubmit={handleAdd} style={{ marginBottom: 16, background: '#f5f5f5', padding: 12, borderRadius: 8 }}>
           <label>
@@ -168,24 +206,46 @@ function DailySchedule({ date, reservations }) {
             </tr>
           </thead>
           <tbody>
-            {slots.map((slot, sIdx) => (
-              <tr key={sIdx}>
-                <td style={{ padding: 8, fontWeight: 500 }}>{slot.start} - {slot.end}</td>
-                {Array.from({ length: NUM_COURTS }, (_, cIdx) => {
-                  const courtRes = reservations[dateStr] && reservations[dateStr][cIdx + 1] ? reservations[dateStr][cIdx + 1] : [];
-                  const res = courtRes.find(r => r.start === slot.start);
-                  return (
-                    <td key={cIdx} style={{ padding: 8, background: res ? '#d1e7dd' : '#f8f9fa', border: '1px solid #eee', minWidth: 90 }}>
-                      {res ? (
-                        <span>{res.name}</span>
-                      ) : (
-                        <span style={{ color: '#bbb' }}>—</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {slots.map((slot, sIdx) => {
+              // If filtering, only show rows with at least one available slot
+              const rowHasAvailable = Array.from({ length: NUM_COURTS }, (_, cIdx) => {
+                const courtRes = localReservations[dateStr] && localReservations[dateStr][cIdx + 1] ? localReservations[dateStr][cIdx + 1] : [];
+                return !courtRes.find(r => r.start === slot.start);
+              }).some(Boolean);
+              if (filterAvailable && !rowHasAvailable) return null;
+              return (
+                <tr key={sIdx}>
+                  <td style={{ padding: 8, fontWeight: 500 }}>{slot.start} - {slot.end}</td>
+                  {Array.from({ length: NUM_COURTS }, (_, cIdx) => {
+                    const court = cIdx + 1;
+                    const courtRes = localReservations[dateStr] && localReservations[dateStr][court] ? localReservations[dateStr][court] : [];
+                    const res = courtRes.find(r => r.start === slot.start);
+                    if (res) {
+                      return (
+                        <td key={cIdx} style={{ padding: 8, background: '#f8d7da', border: '1px solid #eee', minWidth: 90, position: 'relative' }}>
+                          <span>{res.name}</span>
+                          <span
+                            title="Make available"
+                            onClick={() => removeReservation(court, slot.start)}
+                            style={{ color: 'red', cursor: 'pointer', marginLeft: 8, fontWeight: 'bold', fontSize: 18 }}
+                          >
+                            ×
+                          </span>
+                        </td>
+                      );
+                    } else {
+                      return (
+                        <td key={cIdx} style={{ padding: 8, background: '#d4edda', border: '1px solid #eee', minWidth: 90, cursor: 'pointer' }}
+                          title="Click to reserve"
+                          onClick={() => quickReserve(court, slot.start)}>
+                          <span style={{ color: 'green', fontWeight: 500 }}>Available</span>
+                        </td>
+                      );
+                    }
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
