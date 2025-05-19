@@ -254,40 +254,78 @@ function DailySchedule({ date, reservations }) {
 }
 
 function WeeklySchedule({ weekDates, reservations }) {
+  const slotMinutes = 90;
+  const startHour = 8;
+  const endHour = 20;
+  // Generate time slots
+  const slots = [];
+  let slotStart = new Date(weekDates[0]);
+  slotStart.setHours(startHour, 0, 0, 0);
+  while (slotStart.getHours() < endHour) {
+    const slotEnd = new Date(slotStart.getTime() + slotMinutes * 60000);
+    slots.push({
+      start: slotStart.toTimeString().slice(0, 5),
+      end: slotEnd.toTimeString().slice(0, 5)
+    });
+    slotStart = slotEnd;
+  }
+
   return (
     <div>
       <h2>Weekly View</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Court</th>
-            {weekDates.map((d, idx) => (
-              <th key={idx}>{d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: NUM_COURTS }, (_, i) => (
-            <tr key={i}>
-              <td>Court {i + 1}</td>
-              {weekDates.map((d, idx) => {
-                const dateStr = formatDate(d);
-                return (
-                  <td key={idx}>
-                    {reservations[dateStr] && reservations[dateStr][i+1] && reservations[dateStr][i+1].length > 0 ? (
-                      reservations[dateStr][i+1].map((r, ridx) => (
-                        <div key={ridx} style={{ marginBottom: 4 }}>
-                          {r.start} - {r.end}: {r.name}
-                        </div>
-                      ))
-                    ) : <span>(none)</span>}
-                  </td>
-                );
-              })}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', minWidth: 900, background: '#fff' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: 8 }}>Court</th>
+              {weekDates.map((d, idx) => (
+                <th key={idx} style={{ textAlign: 'center', padding: 8 }}>
+                  {d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Array.from({ length: NUM_COURTS }, (_, cIdx) => (
+              <tr key={cIdx}>
+                <td style={{ fontWeight: 500, padding: 8 }}>Court {cIdx + 1}</td>
+                {weekDates.map((date, dIdx) => {
+                  const dateStr = formatDate(date);
+                  return (
+                    <td key={dIdx} style={{ padding: 0, border: '1px solid #eee', minWidth: 120 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <tbody>
+                          {slots.map((slot, sIdx) => {
+                            const courtRes = reservations[dateStr] && reservations[dateStr][cIdx + 1] ? reservations[dateStr][cIdx + 1] : [];
+                            const res = courtRes.find(r => r.start === slot.start);
+                            return (
+                              <tr key={sIdx}>
+                                <td style={{
+                                  padding: 4,
+                                  background: res ? '#f8d7da' : '#d4edda',
+                                  color: res ? '#a94442' : '#155724',
+                                  borderBottom: '1px solid #eee',
+                                  fontSize: 13,
+                                  cursor: 'default',
+                                  minHeight: 24
+                                }}
+                                  title={res ? `${slot.start} - ${slot.end}: ${res.name}` : `${slot.start} - ${slot.end}: Available`}
+                                >
+                                  {res ? `${res.name}` : <span style={{ fontWeight: 500 }}>Available</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
