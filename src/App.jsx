@@ -18,12 +18,44 @@ function formatDate(date) {
   return date.toISOString().split('T')[0];
 }
 
+// Generate mock reservations: { [date]: { [court]: [ { start, end, name } ] } }
+function generateMockReservations() {
+  const data = {};
+  const names = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "Riley", "Jamie", "Drew", "Sam", "Avery"];
+  const startHour = 8; // 8am
+  const endHour = 20; // 8pm
+  const slotMinutes = 90;
+  const today = new Date();
+  for (let dayOffset = -3; dayOffset <= 10; dayOffset++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + dayOffset);
+    const dateStr = formatDate(date);
+    data[dateStr] = {};
+    for (let court = 1; court <= NUM_COURTS; court++) {
+      data[dateStr][court] = [];
+      let slotStart = new Date(date);
+      slotStart.setHours(startHour, 0, 0, 0);
+      while (slotStart.getHours() < endHour) {
+        if (Math.random() < 0.5) { // 50% chance of a reservation
+          const slotEnd = new Date(slotStart.getTime() + slotMinutes * 60000);
+          const name = names[Math.floor(Math.random() * names.length)];
+          data[dateStr][court].push({
+            start: slotStart.toTimeString().slice(0,5),
+            end: slotEnd.toTimeString().slice(0,5),
+            name
+          });
+        }
+        slotStart = new Date(slotStart.getTime() + slotMinutes * 60000);
+      }
+    }
+  }
+  return data;
+}
+
 function App() {
   const [view, setView] = useState('daily'); // 'daily' or 'weekly'
   const [selectedDate, setSelectedDate] = useState(today);
-
-  // Placeholder reservation data
-  const reservations = {};
+  const [reservations] = useState(generateMockReservations());
 
   const handlePrev = () => {
     setSelectedDate(prev => {
@@ -67,6 +99,7 @@ function App() {
 }
 
 function DailySchedule({ date, reservations }) {
+  const dateStr = formatDate(date);
   return (
     <div>
       <h2>Daily View: {date.toDateString()}</h2>
@@ -81,7 +114,15 @@ function DailySchedule({ date, reservations }) {
           {Array.from({ length: NUM_COURTS }, (_, i) => (
             <tr key={i}>
               <td>Court {i + 1}</td>
-              <td>(none)</td>
+              <td>
+                {reservations[dateStr] && reservations[dateStr][i+1] && reservations[dateStr][i+1].length > 0 ? (
+                  reservations[dateStr][i+1].map((r, idx) => (
+                    <div key={idx} style={{ marginBottom: 4 }}>
+                      {r.start} - {r.end}: {r.name}
+                    </div>
+                  ))
+                ) : <span>(none)</span>}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -107,9 +148,20 @@ function WeeklySchedule({ weekDates, reservations }) {
           {Array.from({ length: NUM_COURTS }, (_, i) => (
             <tr key={i}>
               <td>Court {i + 1}</td>
-              {weekDates.map((d, idx) => (
-                <td key={idx}>(none)</td>
-              ))}
+              {weekDates.map((d, idx) => {
+                const dateStr = formatDate(d);
+                return (
+                  <td key={idx}>
+                    {reservations[dateStr] && reservations[dateStr][i+1] && reservations[dateStr][i+1].length > 0 ? (
+                      reservations[dateStr][i+1].map((r, ridx) => (
+                        <div key={ridx} style={{ marginBottom: 4 }}>
+                          {r.start} - {r.end}: {r.name}
+                        </div>
+                      ))
+                    ) : <span>(none)</span>}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
