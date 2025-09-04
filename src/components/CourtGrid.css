@@ -1,0 +1,61 @@
+.court-grid {
+  display: grid;
+  grid-template-columns: 80px repeat(10, 1fr);
+  gap: 1px;
+  background-color: #ddd;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.grid-header {
+  display: contents;
+}
+
+.corner-cell {
+  background-color: #f5f5f5;
+  padding: 12px 8px;
+  font-weight: bold;
+  text-align: center;
+  border-right: 1px solid #ddd;
+}
+
+.court-header {
+  background-color: #e3f2fd;
+  padding: 12px 8px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 14px;
+  border-right: 1px solid #ddd;
+}
+
+.time-row {
+  display: contents;
+}
+
+.time-header {
+  background-color: #f5f5f5;
+  padding: 8px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 12px;
+  border-right: 1px solid #ddd;
+  border-top: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .court-grid {
+    font-size: 10px;
+  }
+  
+  .court-header,
+  .time-header {
+    padding: 6px 4px;
+    font-size: 10px;
+  }
+}
