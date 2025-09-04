@@ -1,34 +1,78 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useReservations } from './hooks/useReservations'
+import CourtGrid from './components/CourtGrid'
+import DateNavigator from './components/DateNavigator'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewMode, setViewMode] = useState('daily')
+  
+  const {
+    addReservation,
+    removeReservation,
+    getReservation
+  } = useReservations()
+
+  const handleBook = (courtId, date, time, playerName) => {
+    addReservation(courtId, date, time, playerName)
+  }
+
+  const handleCancel = (courtId, date, time) => {
+    removeReservation(courtId, date, time)
+  }
+
+  const toggleViewMode = () => {
+    setViewMode(prev => prev === 'daily' ? 'weekly' : 'daily')
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="app">
+      <header className="app-header">
+        <h1>Pickleball Court Reservations</h1>
+        <div className="controls">
+          <button 
+            className={`view-toggle ${viewMode}`}
+            onClick={toggleViewMode}
+            data-testid="view-toggle"
+          >
+            {viewMode === 'daily' ? 'Switch to Weekly' : 'Switch to Daily'}
+          </button>
+        </div>
+      </header>
+
+      <main className="app-main">
+        <DateNavigator 
+          currentDate={currentDate}
+          onDateChange={setCurrentDate}
+          viewMode={viewMode}
+        />
+        
+        {viewMode === 'daily' ? (
+          <CourtGrid
+            date={currentDate}
+            onBook={handleBook}
+            onCancel={handleCancel}
+            getReservation={getReservation}
+          />
+        ) : (
+          <div className="weekly-view" data-testid="weekly-view">
+            <p>Weekly view coming soon...</p>
+          </div>
+        )}
+        
+        <div className="legend">
+          <div className="legend-item">
+            <div className="legend-color available"></div>
+            <span>Available</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-color booked"></div>
+            <span>Booked</span>
+          </div>
+        </div>
+      </main>
+    </div>
   )
 }
 
